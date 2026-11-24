@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="iOS7 Tube">
+<title>iOS7 Tube</title>
+<style>
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background-color: #f2f2f7;
+    color: #111;
+    -webkit-text-size-adjust: none;
+  }
+  .header {
+    background-color: #cc181e;
+    color: #fff;
+    padding: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+  .header-top {
+    display: -webkit-flex;
+    display: flex;
+    -webkit-justify-content: space-between;
+    justify-content: space-between;
+    -webkit-align-items: center;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .title {
+    font-size: 18px;
+    font-weight: bold;
+  }
+  select {
+    font-size: 12px;
+    padding: 4px;
+    border-radius: 4px;
+    border: none;
+    background: #fff;
+    color: #111;
+  }
+  .search-box {
+    display: -webkit-flex;
+    display: flex;
+  }
+  input[type="text"] {
+    -webkit-flex: 1;
+    flex: 1;
+    font-size: 16px;
+    padding: 8px;
+    border: none;
+    border-radius: 4px 0 0 4px;
+    outline: none;
+  }
+  button.search-btn {
+    background-color: #222;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    font-size: 15px;
+    font-weight: bold;
+    border-radius: 0 4px 4px 0;
+  }
+  #status {
+    padding: 12px;
+    text-align: center;
+    font-size: 14px;
+    color: #555;
+  }
+  .video-item {
+    background-color: #fff;
+    border-bottom: 1px solid #ddd;
+    padding: 10px;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+  }
+  .video-item:active {
+    background-color: #e5e5ea;
+  }
+  .thumb {
+    width: 100px;
+    height: 56px;
+    background-color: #000;
+    margin-right: 10px;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+    object-fit: cover;
+  }
+  .info {
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: hidden;
+  }
+  .v-title {
+    font-size: 14px;
+    font-weight: bold;
+    margin-bottom: 4px;
+    line-height: 1.25;
+    max-height: 35px;
+    overflow: hidden;
+  }
+  .v-meta {
+    font-size: 12px;
+    color: #666;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <div class="title">iOS7 Tube</div>
+    <select id="instanceSelect">
+      <option value="https://inv.nadeko.net">inv.nadeko.net</option>
+      <option value="https://invidious.nerdvpn.de">invidious.nerdvpn.de</option>
+      <option value="https://iv.datura.network">iv.datura.network</option>
+      <option value="https://invidious.jing.rocks">invidious.jing.rocks</option>
+    </select>
+  </div>
+  <form class="search-box" onsubmit="doSearch(); return false;">
+    <input type="text" id="queryInput" placeholder="Hae videoita..." autocomplete="off">
+    <button type="submit" class="search-btn">Hae</button>
+  </form>
+</div>
+
+<div id="status">Kirjoita hakusana ylle ja paina Hae.</div>
+<div id="results"></div>
+
+<script type="text/javascript">
+  function getBaseUrl() {
+    var sel = document.getElementById("instanceSelect");
+    return sel.options[sel.selectedIndex].value;
+  }
+
+  function formatDuration(sec) {
+    if (!sec) return "0:00";
+    var m = Math.floor(sec / 60);
+    var s = sec % 60;
+    return m + ":" + (s < 10 ? "0" + s : s);
+  }
+
+  function doSearch() {
+    var q = document.getElementById("queryInput").value;
+    if (!q || q.replace(/\s/g, "") === "") return;
+
+    document.getElementById("queryInput").blur();
+    var statusEl = document.getElementById("status");
+    var resultsEl = document.getElementById("results");
+    statusEl.style.display = "block";
+    statusEl.innerHTML = "Haetaan videoita...";
+    resultsEl.innerHTML = "";
+
+    var url = getBaseUrl() + "/api/v1/search?q=" + encodeURIComponent(q) + "&type=video";
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.timeout = 15000;
+
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+          try {
+            var data = JSON.parse(xhr.responseText);
+            renderResults(data);
+          } catch (e) {
+            statusEl.innerHTML = "Virhe: Palvelimen vastaus ei kelpaa.";
+          }
+        } else {
+          statusEl.innerHTML = "Yhteysvirhe (" + xhr.status + "). Kokeile vaihtaa palvelinta yläkulmasta.";
+        }
+      }
+    };
+
+    xhr.onerror = function() {
+      statusEl.innerHTML = "Verkkovirhe. Varmista Wi-Fi ja ISRG Root X1 -varmenne.";
+    };
+
+    xhr.send();
+  }
+
+  function renderResults(videos) {
+    var statusEl = document.getElementById("status");
+    var resultsEl = document.getElementById("results");
+
+    if (!videos || videos.length === 0) {
+      statusEl.innerHTML = "Ei hakutuloksia.";
+      return;
+    }
+
+    statusEl.style.display = "none";
+    var html = "";
+
+    for (var i = 0; i < videos.length; i++) {
+      var v = videos[i];
+      if (!v.videoId) continue;
+
+      var thumbUrl = "";
+      if (v.videoThumbnails && v.videoThumbnails.length > 0) {
+        // Valitaan kevyt pikkukuva iPhone 4:lle
+        for (var t = 0; t < v.videoThumbnails.length; t++) {
+          if (v.videoThumbnails[t].quality === "medium" || v.videoThumbnails[t].quality === "default") {
+            thumbUrl = v.videoThumbnails[t].url;
+            break;
+          }
+        }
+        if (!thumbUrl) thumbUrl = v.videoThumbnails[0].url;
+      }
+
+      var title = (v.title || "Nimetön").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      var author = (v.author || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      var dur = formatDuration(v.lengthSeconds);
+
+      html += '<div class="video-item" onclick="playVideo(\'' + v.videoId + '\')">';
+      if (thumbUrl) {
+        html += '<img class="thumb" src="' + thumbUrl + '" alt="">';
+      }
+      html += '<div class="info">';
+      html += '<div class="v-title">' + title + '</div>';
+      html += '<div class="v-meta">' + author + ' &bull; ' + dur + '</div>';
+      html += '</div></div>';
+    }
+
+    resultsEl.innerHTML = html;
+  }
+
+  function playVideo(videoId) {
+    var statusEl = document.getElementById("status");
+    statusEl.style.display = "block";
+    statusEl.innerHTML = "Avataan videovirtaa...";
+    window.scrollTo(0, 0);
+
+    var url = getBaseUrl() + "/api/v1/videos/" + encodeURIComponent(videoId);
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.timeout = 15000;
+
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+          try {
+            var data = JSON.parse(xhr.responseText);
+            var streams = data.formatStreams || [];
+            var mp4Url = null;
+
+            for (var i = 0; i < streams.length; i++) {
+              if (streams[i].container === "mp4" && streams[i].url) {
+                mp4Url = streams[i].url;
+                // Suositaan kevyttä 360p-virtaa iPhone 4:lle
+                if (streams[i].qualityLabel && streams[i].qualityLabel.indexOf("360p") === 0) {
+                  break;
+                }
+              }
+            }
+
+            if (mp4Url) {
+              statusEl.style.display = "none";
+              // Avaa suoran MP4-virran iOS:n natiivissa kokoruudun videotoistimessa
+              window.location.href = mp4Url;
+            } else {
+              statusEl.innerHTML = "Tälle videolle ei löytynyt suoraa MP4-muotoa.";
+            }
+          } catch (e) {
+            statusEl.innerHTML = "Virhe videon tietojen purkamisessa.";
+          }
+        } else {
+          statusEl.innerHTML = "Videon lataus epäonnistui (" + xhr.status + ").";
+        }
+      }
+    };
+
+    xhr.send();
+  }
+</script>
+
+</body>
+</html>
