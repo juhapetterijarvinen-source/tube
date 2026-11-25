@@ -43,12 +43,10 @@
     font-weight: bold;
     max-width: 175px;
   }
-  /* Alkunäkymä: hakukenttä keskellä ruutua */
   .search-wrapper.centered {
     padding: 75px 18px 20px 18px;
     text-align: center;
   }
-  /* Hakutulosnäkymä: hakukenttä tiiviinä ylhäällä */
   .search-wrapper.compact {
     background-color: #7b1fa2;
     padding: 10px 12px;
@@ -149,10 +147,11 @@
 <div class="top-bar">
   <div class="title">iOS7 Tube</div>
   <select id="instanceSelect">
-    <option value="https://pipedapi.kavin.rocks">Piped (kavin.rocks)</option>
-    <option value="https://pipedapi.adminforge.de">Piped (adminforge.de)</option>
-    <option value="https://api.piped.projectsegfau.lt">Piped (projectsegfau.lt)</option>
-    <option value="PROXY_INVIDIOUS">Invidious + CORS-proxy</option>
+    <option value="PIPED|https://pipedapi.kavin.rocks">Piped (kavin.rocks)</option>
+    <option value="PIPED|https://pipedapi.adminforge.de">Piped (adminforge.de)</option>
+    <option value="PIPED|https://api.piped.projectsegfau.lt">Piped (projectsegfau.lt)</option>
+    <option value="INVIDIOUS|https://inv.nadeko.net">Invidious (nadeko.net)</option>
+    <option value="INVIDIOUS|https://invidious.nerdvpn.de">Invidious (nerdvpn.de)</option>
   </select>
 </div>
 
@@ -167,9 +166,12 @@
 <div id="results"></div>
 
 <script type="text/javascript">
-  function getSelectedMode() {
+  var WORKER_PROXY = "http://ios7proxy.juha-petteri-jarvinen.workers.dev/?url=";
+
+  function getSelectedServer() {
     var sel = document.getElementById("instanceSelect");
-    return sel.options[sel.selectedIndex].value;
+    var parts = sel.options[sel.selectedIndex].value.split("|");
+    return { type: parts[0], baseUrl: parts[1] };
   }
 
   function formatDuration(sec) {
@@ -201,44 +203,44 @@
     statusEl.innerHTML = "Haetaan videoita...";
     resultsEl.innerHTML = "";
 
-    var mode = getSelectedMode();
-    var url = "";
+    var srv = getSelectedServer();
+    var targetUrl = "";
 
-    if (mode === "PROXY_INVIDIOUS") {
-      var target = "https://inv.nadeko.net/api/v1/search?q=" + encodeURIComponent(q) + "&type=video";
-      url = "https://corsproxy.io/?" + encodeURIComponent(target);
+    if (srv.type === "INVIDIOUS") {
+      targetUrl = srv.baseUrl + "/api/v1/search?q=" + encodeURIComponent(q) + "&type=video";
     } else {
-      url = mode + "/search?q=" + encodeURIComponent(q) + "&filter=videos";
+      targetUrl = srv.baseUrl + "/search?q=" + encodeURIComponent(q) + "&filter=videos";
     }
 
+    var proxyUrl = WORKER_PROXY + encodeURIComponent(targetUrl);
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", url, true);
-    xhr.timeout = 18000;
+    xhr.open("GET", proxyUrl, true);
+    xhr.timeout = 20000;
 
     xhr.onreadystatechange = function() {
       if (xhr.readyState === 4) {
         if (xhr.status === 200) {
           try {
             var data = JSON.parse(xhr.responseText);
-            var items = (mode === "PROXY_INVIDIOUS") ? data : (data.items || []);
-            renderResults(items, mode);
+            var items = (srv.type === "INVIDIOUS") ? data : (data.items || []);
+            renderResults(items, srv.type);
           } catch (e) {
-            statusEl.innerHTML = "Virhe: Palvelimen vastaus ei kelpaa. Vaihda palvelinta yläkulmasta.";
+            statusEl.innerHTML = "Palvelin palautti virheellisen vastauksen. Vaihda palvelinta yläkulmasta.";
           }
         } else {
-          statusEl.innerHTML = "Yhteysvirhe (" + xhr.status + "). Vaihda toinen palvelin yläkulmasta.";
+          statusEl.innerHTML = "Yhteysvirhe (" + xhr.status + "). Kokeile vaihtaa palvelinta yläkulmasta.";
         }
       }
     };
 
     xhr.onerror = function() {
-      statusEl.innerHTML = "TLS/Verkkovirhe tällä palvelimella. Kokeile valikosta toista palvelinta (esim. adminforge tai CORS-proxy).";
+      statusEl.innerHTML = "Yhteys Workeriin epäonnistui. Varmista että avasit sivun http://-osoitteella (ilman s-kirjainta).";
     };
 
     xhr.send();
   }
 
-  function renderResults(videos, mode) {
+  function renderResults(videos, type) {
     var statusEl = document.getElementById("status");
     var resultsEl = document.getElementById("results");
 
@@ -258,7 +260,7 @@
       var author = "";
       var dur = "";
 
-      if (mode === "PROXY_INVIDIOUS") {
+      if (type === "INVIDIOUS") {
         videoId = v.videoId;
         if (v.videoThumbnails && v.videoThumbnails.length > 0) {
           thumbUrl = v.videoThumbnails[0].url;
@@ -299,19 +301,19 @@
     statusEl.innerHTML = "Haetaan videovirtaa...";
     window.scrollTo(0, 0);
 
-    var mode = getSelectedMode();
-    var url = "";
+    var srv = getSelectedServer();
+    var targetUrl = "";
 
-    if (mode === "PROXY_INVIDIOUS") {
-      var target = "https://inv.nadeko.net/api/v1/videos/" + encodeURIComponent(videoId);
-      url = "https://corsproxy.io/?" + encodeURIComponent(target);
+    if (srv.type === "INVIDIOUS") {
+      targetUrl = srv.baseUrl + "/api/v1/videos/" + encodeURIComponent(videoId);
     } else {
-      url = mode + "/streams/" + encodeURIComponent(videoId);
+      targetUrl = srv.baseUrl + "/streams/" + encodeURIComponent(videoId);
     }
 
+    var proxyUrl = WORKER_PROXY + encodeURIComponent(targetUrl);
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", url, true);
-    xhr.timeout = 18000;
+    xhr.open("GET", proxyUrl, true);
+    xhr.timeout = 20000;
 
     xhr.onreadystatechange = function() {
       if (xhr.readyState === 4) {
@@ -320,7 +322,7 @@
             var data = JSON.parse(xhr.responseText);
             var mp4Url = null;
 
-            if (mode === "PROXY_INVIDIOUS") {
+            if (srv.type === "INVIDIOUS") {
               var streams = data.formatStreams || [];
               for (var i = 0; i < streams.length; i++) {
                 if (streams[i].container === "mp4" && streams[i].url) {
@@ -342,7 +344,7 @@
               statusEl.style.display = "none";
               window.location.href = mp4Url;
             } else {
-              statusEl.innerHTML = "Suoraa MP4-virtaa ei löytynyt. Kokeile vaihtaa palvelinta yläkulmasta.";
+              statusEl.innerHTML = "Suoraa MP4-virtaa ei löytynyt. Vaihda palvelinta yläkulmasta.";
             }
           } catch (e) {
             statusEl.innerHTML = "Virhe videon tietojen purkamisessa.";
@@ -354,7 +356,7 @@
     };
 
     xhr.onerror = function() {
-      statusEl.innerHTML = "Verkkovirhe videota avatessa. Kokeile toista palvelinta.";
+      statusEl.innerHTML = "Yhteys Workeriin epäonnistui videota avatessa.";
     };
 
     xhr.send();
