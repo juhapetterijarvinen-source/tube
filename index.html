@@ -20,13 +20,37 @@
   .top-bar {
     background-color: #6a1b9a;
     color: #fff;
-    padding: 10px 14px;
-    text-align: center;
+    padding: 10px 12px;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-justify-content: space-between;
+    justify-content: space-between;
+    -webkit-align-items: center;
+    align-items: center;
   }
   .title {
     font-size: 18px;
     font-weight: bold;
     letter-spacing: 0.4px;
+  }
+  .nav-tabs {
+    display: -webkit-flex;
+    display: flex;
+  }
+  .nav-btn {
+    background-color: rgba(255, 255, 255, 0.18);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    padding: 6px 12px;
+    font-size: 13px;
+    font-weight: bold;
+    margin-left: 6px;
+    border-radius: 6px;
+  }
+  .nav-btn.active {
+    background-color: #fff;
+    color: #6a1b9a;
+    border-color: #fff;
   }
   .search-wrapper.centered {
     padding: 75px 18px 20px 18px;
@@ -86,6 +110,40 @@
     color: #5e35b1;
     line-height: 1.4;
   }
+  /* Natiivi videokehys */
+  #playerBox {
+    display: none;
+    background-color: #000;
+    text-align: center;
+    padding-bottom: 10px;
+  }
+  #nowPlayingText {
+    color: #e1bee7;
+    font-size: 13px;
+    padding: 6px 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #nativePlayer {
+    width: 100%;
+    max-height: 210px;
+    background-color: #000;
+  }
+  .player-controls {
+    margin-top: 6px;
+  }
+  .player-btn {
+    background-color: #6a1b9a;
+    color: #fff;
+    border: none;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: bold;
+    border-radius: 6px;
+    margin: 0 4px;
+  }
+  /* Videorivi */
   .video-item {
     background-color: #fff;
     border-bottom: 1px solid #e1d5ec;
@@ -95,12 +153,21 @@
     -webkit-align-items: center;
     align-items: center;
   }
-  .video-item:active {
-    background-color: #ede7f6;
+  .video-click-area {
+    -webkit-flex: 1;
+    flex: 1;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-align-items: center;
+    align-items: center;
+    overflow: hidden;
+  }
+  .video-click-area:active {
+    opacity: 0.7;
   }
   .thumb {
-    width: 100px;
-    height: 56px;
+    width: 96px;
+    height: 54px;
     background-color: #1a002b;
     margin-right: 10px;
     -webkit-flex-shrink: 0;
@@ -112,6 +179,7 @@
     -webkit-flex: 1;
     flex: 1;
     overflow: hidden;
+    padding-right: 6px;
   }
   .v-title {
     font-size: 14px;
@@ -125,140 +193,310 @@
     font-size: 12px;
     color: #6a1b9a;
   }
+  .add-btn {
+    background-color: #f3e5f5;
+    color: #6a1b9a;
+    border: 1px solid #ce93d8;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-weight: bold;
+    border-radius: 6px;
+    -webkit-flex-shrink: 0;
+    flex-shrink: 0;
+  }
+  .add-btn:active {
+    background-color: #8e24aa;
+    color: #fff;
+  }
+  /* Soittolistanäkymä */
+  #playlistsView {
+    display: none;
+    padding-bottom: 20px;
+  }
+  .pl-header {
+    background-color: #7b1fa2;
+    color: #fff;
+    padding: 12px;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-justify-content: space-between;
+    justify-content: space-between;
+    -webkit-align-items: center;
+    align-items: center;
+  }
+  .pl-card {
+    background-color: #fff;
+    border-bottom: 1px solid #e1d5ec;
+    padding: 14px 12px;
+    display: -webkit-flex;
+    display: flex;
+    -webkit-justify-content: space-between;
+    justify-content: space-between;
+    -webkit-align-items: center;
+    align-items: center;
+  }
+  .pl-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: #4a148c;
+  }
+  .pl-count {
+    font-size: 13px;
+    color: #666;
+    margin-top: 2px;
+  }
+  .btn-play-pl {
+    background-color: #8e24aa;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    font-size: 13px;
+    font-weight: bold;
+    border-radius: 6px;
+    margin-right: 6px;
+  }
+  .btn-del {
+    background-color: #fbe9e7;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+    padding: 8px 10px;
+    font-size: 13px;
+    font-weight: bold;
+    border-radius: 6px;
+  }
+  /* Ponnahdusikkuna soittolistan valintaan */
+  #modalOverlay {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: rgba(0, 0, 0, 0.65);
+    z-index: 100;
+    padding: 30px 16px;
+  }
+  .modal-box {
+    background-color: #fff;
+    border-radius: 10px;
+    max-width: 380px;
+    margin: 20px auto;
+    padding: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  .modal-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #4a148c;
+    margin-bottom: 12px;
+  }
+  .modal-list-item {
+    padding: 12px;
+    border: 1px solid #e1d5ec;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    font-size: 15px;
+    font-weight: bold;
+    color: #6a1b9a;
+    background-color: #faf5fc;
+  }
+  .modal-list-item:active {
+    background-color: #e1bee7;
+  }
+  .modal-new-btn {
+    width: 100%;
+    padding: 12px;
+    background-color: #8e24aa;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 15px;
+    font-weight: bold;
+    margin-top: 4px;
+  }
+  .modal-cancel-btn {
+    width: 100%;
+    padding: 10px;
+    background-color: #eee;
+    color: #333;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-top: 8px;
+  }
 </style>
 </head>
 <body>
 
 <div class="top-bar">
   <div class="title">iOS7 Tube</div>
+  <div class="nav-tabs">
+    <button type="button" id="tabSearch" class="nav-btn active" onclick="switchTab('search')">Haku</button>
+    <button type="button" id="tabPlaylists" class="nav-btn" onclick="switchTab('playlists')">Soittolistat</button>
+  </div>
 </div>
 
-<div id="searchWrapper" class="search-wrapper centered">
-  <form class="search-box" onsubmit="doSearch(); return false;">
-    <input type="text" id="queryInput" placeholder="Hae videoita..." autocomplete="off">
-    <button type="submit" class="search-btn">Hae</button>
-  </form>
-  <div id="status">Kirjoita hakusana ja paina Hae.</div>
+<!-- Sivun sisäinen natiivi videosoitin -->
+<div id="playerBox">
+  <div id="nowPlayingText"></div>
+  <video id="nativePlayer" controls preload="auto"></video>
+  <div class="player-controls">
+    <button type="button" id="nextTrackBtn" class="player-btn" style="display:none;" onclick="playNextInQueue()">Seuraava &raquo;</button>
+    <button type="button" class="player-btn" onclick="closePlayer()">Sulje soitin</button>
+  </div>
 </div>
 
-<div id="results"></div>
+<!-- HAKUNÄKYMÄ -->
+<div id="searchView">
+  <div id="searchWrapper" class="search-wrapper centered">
+    <form class="search-box" onsubmit="doSearch(); return false;">
+      <input type="text" id="queryInput" placeholder="Hae videoita..." autocomplete="off">
+      <button type="submit" class="search-btn">Hae</button>
+    </form>
+    <div id="status">Kirjoita hakusana ja paina Hae.</div>
+  </div>
+  <div id="results"></div>
+</div>
+
+<!-- SOITTOLISTANÄKYMÄ -->
+<div id="playlistsView">
+  <div class="pl-header">
+    <div id="plHeaderTitle" style="font-weight:bold; font-size:16px;">Omat soittolistat</div>
+    <div>
+      <button type="button" id="plBackBtn" class="nav-btn" style="display:none;" onclick="renderPlaylistsOverview()">&laquo; Takaisin</button>
+      <button type="button" id="plCreateBtn" class="nav-btn active" onclick="createNewPlaylistPrompt()">+ Uusi lista</button>
+    </div>
+  </div>
+  <div id="plStatus" style="padding:12px; text-align:center; color:#5e35b1; font-size:14px; display:none;"></div>
+  <div id="playlistsContainer"></div>
+</div>
+
+<!-- PONNAHDUKSIKKUNA: LISÄÄ SOITTOLISTALLE -->
+<div id="modalOverlay">
+  <div class="modal-box">
+    <div class="modal-title" id="modalVideoTitle">Lisää soittolistalle</div>
+    <div id="modalPlaylistsList"></div>
+    <button type="button" class="modal-new-btn" onclick="addVideoToNewPlaylist()">+ Luo uusi soittolista</button>
+    <button type="button" class="modal-cancel-btn" onclick="closeModal()">Peruuta</button>
+  </div>
+</div>
 
 <script type="text/javascript">
   var WORKER_BASE = "https://ios7proxy.juha-petteri-jarvinen.workers.dev/";
+  var currentSearchResults = [];
+  var pendingVideoToAdd = null;
 
-  function doSearch() {
-    var q = document.getElementById("queryInput").value;
-    if (!q || q.replace(/\s/g, "") === "") return;
+  // Soittojono soittolistatoistolle
+  var playQueue = [];
+  var playQueueIndex = -1;
 
-    document.getElementById("queryInput").blur();
-    document.getElementById("searchWrapper").className = "search-wrapper compact";
-
-    var statusEl = document.getElementById("status");
-    var resultsEl = document.getElementById("results");
-    statusEl.style.display = "block";
-    statusEl.style.color = "#fff";
-    statusEl.innerHTML = "Haetaan videoita...";
-    resultsEl.innerHTML = "";
-
-    var url = WORKER_BASE + "?action=search&q=" + encodeURIComponent(q);
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url, true);
-    xhr.timeout = 20000;
-
-    xhr.onreadystatechange = function() {
-      if (xhr.readyState === 4) {
-        if (xhr.status === 200) {
-          try {
-            var videos = JSON.parse(xhr.responseText);
-            renderResults(videos);
-          } catch (e) {
-            statusEl.innerHTML = "Virhe hakutulosten lukemisessa.";
-          }
-        } else {
-          statusEl.innerHTML = "Hakuvirhe (" + xhr.status + ").";
-        }
-      }
-    };
-
-    xhr.onerror = function() {
-      statusEl.innerHTML = "Yhteysvirhe Workeriin.";
-    };
-
-    xhr.send();
+  // --- LOCALSTORAGE SOITTOLISTAT ---
+  function loadPlaylists() {
+    try {
+      var raw = localStorage.getItem("ios7tube_playlists");
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
   }
 
-  function renderResults(videos) {
-    var statusEl = document.getElementById("status");
-    var resultsEl = document.getElementById("results");
+  function savePlaylists(lists) {
+    try {
+      localStorage.setItem("ios7tube_playlists", JSON.stringify(lists));
+    } catch (e) {
+      alert("Tallennus epäonnistui. Tarkista ettei Safarin yksityinen selaus ole päällä.");
+    }
+  }
 
-    if (!videos || videos.length === 0) {
-      statusEl.innerHTML = "Ei hakutuloksia.";
-      return;
+  // --- VÄLILEHDET ---
+  function switchTab(tab) {
+    var searchView = document.getElementById("searchView");
+    var plView = document.getElementById("playlistsView");
+    var tabSearch = document.getElementById("tabSearch");
+    var tabPl = document.getElementById("tabPlaylists");
+
+    if (tab === "search") {
+      searchView.style.display = "block";
+      plView.style.display = "none";
+      tabSearch.className = "nav-btn active";
+      tabPl.className = "nav-btn";
+    } else {
+      searchView.style.display = "none";
+      plView.style.display = "block";
+      tabSearch.className = "nav-btn";
+      tabPl.className = "nav-btn active";
+      renderPlaylistsOverview();
+    }
+  }
+
+  // --- SOITIN JA JONO ---
+  function closePlayer() {
+    var player = document.getElementById("nativePlayer");
+    var box = document.getElementById("playerBox");
+    try {
+      player.pause();
+      player.removeAttribute("src");
+      player.load();
+    } catch (e) {}
+    box.style.display = "none";
+    playQueue = [];
+    playQueueIndex = -1;
+  }
+
+  function startNativeVideo(streamUrl, titleText) {
+    var box = document.getElementById("playerBox");
+    var player = document.getElementById("nativePlayer");
+    var nowText = document.getElementById("nowPlayingText");
+    var nextBtn = document.getElementById("nextTrackBtn");
+
+    box.style.display = "block";
+    nowText.innerHTML = titleText || "Toistetaan videota";
+
+    if (playQueue.length > 1 && playQueueIndex < playQueue.length - 1) {
+      nextBtn.style.display = "inline-block";
+    } else {
+      nextBtn.style.display = "none";
     }
 
-    statusEl.style.display = "none";
-    var html = "";
+    player.src = streamUrl;
+    player.load();
+    player.play();
 
-    for (var i = 0; i < videos.length; i++) {
-      var v = videos[i];
-      if (!v.videoId) continue;
-
-      var title = (v.title || "Nimetön").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      var author = (v.author || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      var dur = v.duration || "";
-
-      html += '<div class="video-item" onclick="playVideo(\'' + v.videoId + '\')">';
-      if (v.thumb) {
-        html += '<img class="thumb" src="' + v.thumb + '" alt="">';
-      }
-      html += '<div class="info">';
-      html += '<div class="v-title">' + title + '</div>';
-      html += '<div class="v-meta">' + author + (dur ? ' &bull; ' + dur : '') + '</div>';
-      html += '</div></div>';
-    }
-
-    resultsEl.innerHTML = html;
-  }
-
-  function playVideo(videoId) {
-    var statusEl = document.getElementById("status");
-    statusEl.style.display = "block";
-    statusEl.style.color = "#fff";
-    statusEl.innerHTML = "Haetaan videovirtaa...";
-    window.scrollTo(0, 0);
-
-    var url = WORKER_BASE + "?action=stream&id=" + encodeURIComponent(videoId);
-    var xhr = new XMLHttpRequest();
-    xhr.open("GET", url, true);
-    xhr.timeout = 25000;
-
-    xhr.onreadystatechange = function() {
-      if (xhr.readyState === 4) {
-        if (xhr.status === 200) {
-          try {
-            var data = JSON.parse(xhr.responseText);
-            if (data.url) {
-              statusEl.style.display = "none";
-              window.location.href = data.url;
-            } else {
-              statusEl.innerHTML = data.error || "Videovirtaa ei löytynyt.";
-            }
-          } catch (e) {
-            statusEl.innerHTML = "Virhe videon tietojen purkamisessa.";
-          }
-        } else {
-          statusEl.innerHTML = "Videon lataus epäonnistui (" + xhr.status + ").";
+    player.onloadedmetadata = function() {
+      try {
+        if (player.webkitEnterFullscreen) {
+          player.webkitEnterFullscreen();
         }
-      }
+      } catch (e) {}
     };
-
-    xhr.onerror = function() {
-      statusEl.innerHTML = "Yhteysvirhe videovirtaa haettaessa.";
-    };
-
-    xhr.send();
   }
-</script>
 
-</body>
-</html>
+  // Kun video loppuu, siirrytään soittolistan seuraavaan videoon
+  document.getElementById("nativePlayer").addEventListener("ended", function() {
+    if (playQueue.length > 0 && playQueueIndex + 1 < playQueue.length) {
+      playNextInQueue();
+    }
+  }, false);
+
+  function playNextInQueue() {
+    if (playQueueIndex + 1 < playQueue.length) {
+      playQueueIndex++;
+      var nextVid = playQueue[playQueueIndex];
+      fetchAndPlayVideo(nextVid.videoId, (playQueueIndex + 1) + "/" + playQueue.length + ": " + nextVid.title, true);
+    }
+  }
+
+  function playSingleVideo(index) {
+    var v = currentSearchResults[index];
+    if (!v) return;
+    playQueue = [];
+    playQueueIndex = -1;
+    fetchAndPlayVideo(v.videoId, v.title, false);
+  }
+
+  function startPlaylistPlayback(plIndex, startTrackIndex) {
+    var lists = loadPlaylists();
+    var pl = lists[plIndex];
+    if (!pl || !pl.videos || pl.videos.length === 0) return;
+
+    playQueue = pl.videos;
+    playQueueIndex = startTrackIndex || 0;
+    var vid = playQueue[playQueueIndex];
+    fetchAndPlayVideo(vid.videoId, (playQueueIndex + 1
