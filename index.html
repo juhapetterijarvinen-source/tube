@@ -499,4 +499,288 @@
     playQueue = pl.videos;
     playQueueIndex = startTrackIndex || 0;
     var vid = playQueue[playQueueIndex];
-    fetchAndPlayVideo(vid.videoId, (playQueueIndex + 1
+    fetchAndPlayVideo(vid.videoId, (playQueueIndex + 1) + "/" + playQueue.length + ": " + vid.title, true);
+  }
+
+  function fetchAndPlayVideo(videoId, labelText, isPlaylist) {
+    var statusEl = isPlaylist ? document.getElementById("plStatus") : document.getElementById("status");
+    statusEl.style.display = "block";
+    if (!isPlaylist) statusEl.style.color = "#fff";
+    statusEl.innerHTML = "Haetaan videovirtaa: " + (labelText || "") + "...";
+    window.scrollTo(0, 0);
+
+    var url = WORKER_BASE + "?action=stream&id=" + encodeURIComponent(videoId);
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.timeout = 25000;
+
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+          try {
+            var data = JSON.parse(xhr.responseText);
+            if (data.url) {
+              statusEl.style.display = "none";
+              startNativeVideo(data.url, labelText);
+            } else {
+              statusEl.innerHTML = data.error || "Videovirtaa ei löytynyt.";
+            }
+          } catch (e) {
+            statusEl.innerHTML = "Virhe videon tietojen purkamisessa.";
+          }
+        } else {
+          statusEl.innerHTML = "Videon lataus epäonnistui (" + xhr.status + ").";
+        }
+      }
+    };
+
+    xhr.onerror = function() {
+      statusEl.innerHTML = "Yhteysvirhe videovirtaa haettaessa.";
+    };
+
+    xhr.send();
+  }
+
+  // --- HAKU ---
+  function doSearch() {
+    var q = document.getElementById("queryInput").value;
+    if (!q || q.replace(/\s/g, "") === "") return;
+
+    document.getElementById("queryInput").blur();
+    document.getElementById("searchWrapper").className = "search-wrapper compact";
+
+    var statusEl = document.getElementById("status");
+    var resultsEl = document.getElementById("results");
+    statusEl.style.display = "block";
+    statusEl.style.color = "#fff";
+    statusEl.innerHTML = "Haetaan videoita...";
+    resultsEl.innerHTML = "";
+
+    var url = WORKER_BASE + "?action=search&q=" + encodeURIComponent(q);
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url, true);
+    xhr.timeout = 20000;
+
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState === 4) {
+        if (xhr.status === 200) {
+          try {
+            var videos = JSON.parse(xhr.responseText);
+            currentSearchResults = videos || [];
+            renderResults(currentSearchResults);
+          } catch (e) {
+            statusEl.innerHTML = "Virhe hakutulosten lukemisessa.";
+          }
+        } else {
+          statusEl.innerHTML = "Hakuvirhe (" + xhr.status + ").";
+        }
+      }
+    };
+
+    xhr.onerror = function() {
+      statusEl.innerHTML = "Yhteysvirhe Workeriin.";
+    };
+
+    xhr.send();
+  }
+
+  function escapeHtml(str) {
+    return (str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function renderResults(videos) {
+    var statusEl = document.getElementById("status");
+    var resultsEl = document.getElementById("results");
+
+    if (!videos || videos.length === 0) {
+      statusEl.innerHTML = "Ei hakutuloksia.";
+      return;
+    }
+
+    statusEl.style.display = "none";
+    var html = "";
+
+    for (var i = 0; i < videos.length; i++) {
+      var v = videos[i];
+      if (!v.videoId) continue;
+
+      var title = escapeHtml(v.title || "Nimetön");
+      var author = escapeHtml(v.author || "");
+      var dur = escapeHtml(v.duration || "");
+
+      html += '<div class="video-item">';
+      html += '<div class="video-click-area" onclick="playSingleVideo(' + i + ')">';
+      if (v.thumb) {
+        html += '<img class="thumb" src="' + v.thumb + '" alt="">';
+      }
+      html += '<div class="info">';
+      html += '<div class="v-title">' + title + '</div>';
+      html += '<div class="v-meta">' + author + (dur ? ' &bull; ' + dur : '') + '</div>';
+      html += '</div></div>';
+      html += '<button type="button" class="add-btn" onclick="openAddModal(' + i + ')">+ Lista</button>';
+      html += '</div>';
+    }
+
+    resultsEl.innerHTML = html;
+  }
+
+  // --- SOITTOLISTALLE LISÄYS (MODAL) ---
+  function openAddModal(searchIndex) {
+    pendingVideoToAdd = currentSearchResults[searchIndex];
+    if (!pendingVideoToAdd) return;
+
+    document.getElementById("modalVideoTitle").innerHTML = "Lisää: " + escapeHtml(pendingVideoToAdd.title);
+    var lists = loadPlaylists();
+    var container = document.getElementById("modalPlaylistsList");
+    var html = "";
+
+    if (lists.length === 0) {
+      html = '<div style="font-size:13px; color:#666; margin-bottom:10px;">Ei vielä soittolistoja. Luo ensimmäinen alta:</div>';
+    } else {
+      for (var i = 0; i < lists.length; i++) {
+        html += '<div class="modal-list-item" onclick="confirmAddToPlaylist(' + i + ')">';
+        html += escapeHtml(lists[i].name) + ' (' + lists[i].videos.length + ' kpl)';
+        html += '</div>';
+      }
+    }
+
+    container.innerHTML = html;
+    document.getElementById("modalOverlay").style.display = "block";
+  }
+
+  function closeModal() {
+    document.getElementById("modalOverlay").style.display = "none";
+    pendingVideoToAdd = null;
+  }
+
+  function confirmAddToPlaylist(plIndex) {
+    if (!pendingVideoToAdd) return;
+    var lists = loadPlaylists();
+    if (!lists[plIndex]) return;
+
+    lists[plIndex].videos.push({
+      videoId: pendingVideoToAdd.videoId,
+      title: pendingVideoToAdd.title,
+      author: pendingVideoToAdd.author,
+      duration: pendingVideoToAdd.duration,
+      thumb: pendingVideoToAdd.thumb
+    });
+
+    savePlaylists(lists);
+    var listName = lists[plIndex].name;
+    closeModal();
+    alert("Lisätty listalle: " + listName);
+  }
+
+  function addVideoToNewPlaylist() {
+    var name = prompt("Anna uuden soittolistan nimi:");
+    if (!name || name.replace(/\s/g, "") === "") return;
+
+    var lists = loadPlaylists();
+    lists.push({ name: name, videos: [] });
+    savePlaylists(lists);
+    confirmAddToPlaylist(lists.length - 1);
+  }
+
+  // --- SOITTOLISTOJEN HALLINTA ---
+  function createNewPlaylistPrompt() {
+    var name = prompt("Anna uuden soittolistan nimi:");
+    if (!name || name.replace(/\s/g, "") === "") return;
+
+    var lists = loadPlaylists();
+    lists.push({ name: name, videos: [] });
+    savePlaylists(lists);
+    renderPlaylistsOverview();
+  }
+
+  function deletePlaylist(plIndex) {
+    var lists = loadPlaylists();
+    if (!lists[plIndex]) return;
+    if (confirm("Poistetaanko soittolista \"" + lists[plIndex].name + "\"?")) {
+      lists.splice(plIndex, 1);
+      savePlaylists(lists);
+      renderPlaylistsOverview();
+    }
+  }
+
+  function removeVideoFromPlaylist(plIndex, trackIndex) {
+    var lists = loadPlaylists();
+    if (!lists[plIndex]) return;
+    lists[plIndex].videos.splice(trackIndex, 1);
+    savePlaylists(lists);
+    openPlaylistDetails(plIndex);
+  }
+
+  function renderPlaylistsOverview() {
+    document.getElementById("plHeaderTitle").innerHTML = "Omat soittolistat";
+    document.getElementById("plBackBtn").style.display = "none";
+    document.getElementById("plCreateBtn").style.display = "inline-block";
+    document.getElementById("plStatus").style.display = "none";
+
+    var lists = loadPlaylists();
+    var container = document.getElementById("playlistsContainer");
+
+    if (lists.length === 0) {
+      container.innerHTML = '<div style="padding:30px 16px; text-align:center; color:#666; font-size:15px;">Sinulla ei ole vielä soittolistoja.<br><br>Hae videoita ja paina <b>+ Lista</b> lisätäksesi niitä soittolistalle.</div>';
+      return;
+    }
+
+    var html = "";
+    for (var i = 0; i < lists.length; i++) {
+      var pl = lists[i];
+      html += '<div class="pl-card">';
+      html += '<div style="flex:1; overflow:hidden; padding-right:8px;" onclick="openPlaylistDetails(' + i + ')">';
+      html += '<div class="pl-name">' + escapeHtml(pl.name) + '</div>';
+      html += '<div class="pl-count">' + pl.videos.length + ' videota &bull; Napauta avataksesi</div>';
+      html += '</div>';
+      html += '<div>';
+      if (pl.videos.length > 0) {
+        html += '<button type="button" class="btn-play-pl" onclick="startPlaylistPlayback(' + i + ', 0)">Toista</button>';
+      }
+      html += '<button type="button" class="btn-del" onclick="deletePlaylist(' + i + ')">Poista</button>';
+      html += '</div></div>';
+    }
+
+    container.innerHTML = html;
+  }
+
+  function openPlaylistDetails(plIndex) {
+    var lists = loadPlaylists();
+    var pl = lists[plIndex];
+    if (!pl) return;
+
+    document.getElementById("plHeaderTitle").innerHTML = escapeHtml(pl.name);
+    document.getElementById("plBackBtn").style.display = "inline-block";
+    document.getElementById("plCreateBtn").style.display = "none";
+
+    var container = document.getElementById("playlistsContainer");
+    if (pl.videos.length === 0) {
+      container.innerHTML = '<div style="padding:30px 16px; text-align:center; color:#666;">Tämä soittolista on tyhjä.</div>';
+      return;
+    }
+
+    var html = '<div style="padding:10px; background:#ede7f6; text-align:center;">';
+    html += '<button type="button" class="btn-play-pl" style="width:100%; padding:12px; font-size:15px;" onclick="startPlaylistPlayback(' + plIndex + ', 0)">Toista koko soittolista (' + pl.videos.length + ' kpl)</button>';
+    html += '</div>';
+
+    for (var j = 0; j < pl.videos.length; j++) {
+      var v = pl.videos[j];
+      html += '<div class="video-item">';
+      html += '<div class="video-click-area" onclick="startPlaylistPlayback(' + plIndex + ', ' + j + ')">';
+      if (v.thumb) {
+        html += '<img class="thumb" src="' + v.thumb + '" alt="">';
+      }
+      html += '<div class="info">';
+      html += '<div class="v-title">' + (j + 1) + '. ' + escapeHtml(v.title) + '</div>';
+      html += '<div class="v-meta">' + escapeHtml(v.author) + (v.duration ? ' &bull; ' + escapeHtml(v.duration) : '') + '</div>';
+      html += '</div></div>';
+      html += '<button type="button" class="btn-del" onclick="removeVideoFromPlaylist(' + plIndex + ', ' + j + ')">X</button>';
+      html += '</div>';
+    }
+
+    container.innerHTML = html;
+  }
+</script>
+
+</body>
+</html>
