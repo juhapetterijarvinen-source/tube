@@ -521,7 +521,8 @@
             var data = JSON.parse(xhr.responseText);
             if (data.url) {
               statusEl.style.display = "none";
-              startNativeVideo(data.url, labelText);
+              var finalStreamUrl = data.proxy ? (WORKER_BASE + "?action=proxy&url=" + encodeURIComponent(data.url)) : data.url;
+              startNativeVideo(finalStreamUrl, labelText);
             } else {
               statusEl.innerHTML = data.error || "Videovirtaa ei löytynyt.";
             }
