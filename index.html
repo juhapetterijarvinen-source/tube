@@ -129,13 +129,6 @@
     max-height: 210px;
     background-color: #000;
   }
-  #embedPlayer {
-    display: none;
-    width: 100%;
-    height: 220px;
-    border: none;
-    background-color: #000;
-  }
   .player-controls {
     margin-top: 6px;
   }
@@ -345,7 +338,6 @@
 <div id="playerBox">
   <div id="nowPlayingText"></div>
   <video id="nativePlayer" controls preload="auto"></video>
-  <iframe id="embedPlayer" allowfullscreen></iframe>
   <div class="player-controls">
     <button type="button" id="nextTrackBtn" class="player-btn" style="display:none;" onclick="playNextInQueue()">Seuraava &raquo;</button>
     <button type="button" class="player-btn" onclick="closePlayer()">Sulje soitin</button>
@@ -385,15 +377,6 @@
 </div>
 
 <script type="text/javascript">
-  window.onerror = function(msg, url, line) {
-    var st = document.getElementById("status");
-    if (st) {
-      st.style.display = "block";
-      st.style.color = "#c62828";
-      st.innerHTML = "JS-virhe (rivi " + line + "): " + msg;
-    }
-  };
-
   var WORKER_BASE = "https://ios7proxy.juha-petteri-jarvinen.workers.dev/";
   var currentSearchResults = [];
   var pendingVideoToAdd = null;
@@ -439,25 +422,20 @@
 
   function closePlayer() {
     var player = document.getElementById("nativePlayer");
-    var embed = document.getElementById("embedPlayer");
     var box = document.getElementById("playerBox");
     try {
       player.pause();
       player.removeAttribute("src");
       player.load();
     } catch (e) {}
-    embed.src = "about:blank";
-    embed.style.display = "none";
-    player.style.display = "none";
     box.style.display = "none";
     playQueue = [];
     playQueueIndex = -1;
   }
 
-  function startNativeVideo(streamUrl, titleText, streamType) {
+  function startNativeVideo(streamUrl, titleText) {
     var box = document.getElementById("playerBox");
     var player = document.getElementById("nativePlayer");
-    var embed = document.getElementById("embedPlayer");
     var nowText = document.getElementById("nowPlayingText");
     var nextBtn = document.getElementById("nextTrackBtn");
 
@@ -470,25 +448,17 @@
       nextBtn.style.display = "none";
     }
 
-    if (streamType === "embed") {
-      player.style.display = "none";
-      embed.style.display = "block";
-      embed.src = streamUrl;
-    } else {
-      embed.style.display = "none";
-      player.style.display = "block";
-      player.src = streamUrl;
-      player.load();
-      player.play();
+    player.src = streamUrl;
+    player.load();
+    player.play();
 
-      player.onloadedmetadata = function() {
-        try {
-          if (player.webkitEnterFullscreen) {
-            player.webkitEnterFullscreen();
-          }
-        } catch (e) {}
-      };
-    }
+    player.onloadedmetadata = function() {
+      try {
+        if (player.webkitEnterFullscreen) {
+          player.webkitEnterFullscreen();
+        }
+      } catch (e) {}
+    };
   }
 
   var np = document.getElementById("nativePlayer");
@@ -496,6 +466,12 @@
     np.addEventListener("ended", function() {
       if (playQueue.length > 0 && playQueueIndex + 1 < playQueue.length) {
         playNextInQueue();
+      }
+    }, false);
+
+    np.addEventListener("webkitendfullscreen", function() {
+      if (playQueue.length === 0) {
+        closePlayer();
       }
     }, false);
   }
@@ -546,7 +522,7 @@
             var data = JSON.parse(xhr.responseText);
             if (data.url) {
               statusEl.style.display = "none";
-              startNativeVideo(data.url, labelText, data.type || "mp4");
+              startNativeVideo(data.url, labelText);
             } else {
               statusEl.innerHTML = data.error || "Videovirtaa ei löytynyt.";
             }
