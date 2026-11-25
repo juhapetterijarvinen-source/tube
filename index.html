@@ -20,28 +20,13 @@
   .top-bar {
     background-color: #6a1b9a;
     color: #fff;
-    padding: 10px 12px;
-    display: -webkit-flex;
-    display: flex;
-    -webkit-justify-content: space-between;
-    justify-content: space-between;
-    -webkit-align-items: center;
-    align-items: center;
+    padding: 10px 14px;
+    text-align: center;
   }
   .title {
     font-size: 18px;
     font-weight: bold;
-    letter-spacing: 0.3px;
-  }
-  select {
-    font-size: 12px;
-    padding: 5px 6px;
-    border-radius: 5px;
-    border: none;
-    background: #fff;
-    color: #4a148c;
-    font-weight: bold;
-    max-width: 175px;
+    letter-spacing: 0.4px;
   }
   .search-wrapper.centered {
     padding: 75px 18px 20px 18px;
@@ -146,13 +131,6 @@
 
 <div class="top-bar">
   <div class="title">iOS7 Tube</div>
-  <select id="instanceSelect">
-    <option value="PIPED|https://pipedapi.kavin.rocks">Piped (kavin.rocks)</option>
-    <option value="PIPED|https://pipedapi.adminforge.de">Piped (adminforge.de)</option>
-    <option value="PIPED|https://api.piped.projectsegfau.lt">Piped (projectsegfau.lt)</option>
-    <option value="INVIDIOUS|https://inv.nadeko.net">Invidious (nadeko.net)</option>
-    <option value="INVIDIOUS|https://invidious.nerdvpn.de">Invidious (nerdvpn.de)</option>
-  </select>
 </div>
 
 <div id="searchWrapper" class="search-wrapper centered">
@@ -166,28 +144,7 @@
 <div id="results"></div>
 
 <script type="text/javascript">
-  var WORKER_PROXY = "https://ios7proxy.juha-petteri-jarvinen.workers.dev/?url=";
-
-  function getSelectedServer() {
-    var sel = document.getElementById("instanceSelect");
-    var parts = sel.options[sel.selectedIndex].value.split("|");
-    return { type: parts[0], baseUrl: parts[1] };
-  }
-
-  function formatDuration(sec) {
-    if (!sec || sec < 0) return "LIVE";
-    var m = Math.floor(sec / 60);
-    var s = sec % 60;
-    return m + ":" + (s < 10 ? "0" + s : s);
-  }
-
-  function extractVideoId(urlOrId) {
-    if (!urlOrId) return "";
-    if (urlOrId.indexOf("v=") !== -1) {
-      return urlOrId.split("v=")[1].split("&")[0];
-    }
-    return urlOrId;
-  }
+  var WORKER_BASE = "https://ios7proxy.juha-petteri-jarvinen.workers.dev/";
 
   function doSearch() {
     var q = document.getElementById("queryInput").value;
@@ -203,44 +160,34 @@
     statusEl.innerHTML = "Haetaan videoita...";
     resultsEl.innerHTML = "";
 
-    var srv = getSelectedServer();
-    var targetUrl = "";
-
-    if (srv.type === "INVIDIOUS") {
-      targetUrl = srv.baseUrl + "/api/v1/search?q=" + encodeURIComponent(q) + "&type=video";
-    } else {
-      targetUrl = srv.baseUrl + "/search?q=" + encodeURIComponent(q) + "&filter=videos";
-    }
-
-    var proxyUrl = WORKER_PROXY + encodeURIComponent(targetUrl);
+    var url = WORKER_BASE + "?action=search&q=" + encodeURIComponent(q);
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", proxyUrl, true);
+    xhr.open("GET", url, true);
     xhr.timeout = 20000;
 
     xhr.onreadystatechange = function() {
       if (xhr.readyState === 4) {
         if (xhr.status === 200) {
           try {
-            var data = JSON.parse(xhr.responseText);
-            var items = (srv.type === "INVIDIOUS") ? data : (data.items || []);
-            renderResults(items, srv.type);
+            var videos = JSON.parse(xhr.responseText);
+            renderResults(videos);
           } catch (e) {
-            statusEl.innerHTML = "Palvelin palautti virheellisen vastauksen. Vaihda palvelinta yläkulmasta.";
+            statusEl.innerHTML = "Virhe hakutulosten lukemisessa.";
           }
         } else {
-          statusEl.innerHTML = "Yhteysvirhe (" + xhr.status + "). Kokeile vaihtaa palvelinta yläkulmasta.";
+          statusEl.innerHTML = "Hakuvirhe (" + xhr.status + ").";
         }
       }
     };
 
     xhr.onerror = function() {
-      statusEl.innerHTML = "Yhteys Workeriin epäonnistui. Varmista että avasit sivun http://-osoitteella (ilman s-kirjainta).";
+      statusEl.innerHTML = "Yhteysvirhe Workeriin.";
     };
 
     xhr.send();
   }
 
-  function renderResults(videos, type) {
+  function renderResults(videos) {
     var statusEl = document.getElementById("status");
     var resultsEl = document.getElementById("results");
 
@@ -254,40 +201,19 @@
 
     for (var i = 0; i < videos.length; i++) {
       var v = videos[i];
-      var videoId = "";
-      var thumbUrl = "";
-      var title = "";
-      var author = "";
-      var dur = "";
+      if (!v.videoId) continue;
 
-      if (type === "INVIDIOUS") {
-        videoId = v.videoId;
-        if (v.videoThumbnails && v.videoThumbnails.length > 0) {
-          thumbUrl = v.videoThumbnails[0].url;
-        }
-        title = v.title || "Nimetön";
-        author = v.author || "";
-        dur = formatDuration(v.lengthSeconds);
-      } else {
-        videoId = extractVideoId(v.url);
-        thumbUrl = v.thumbnail || "";
-        title = v.title || "Nimetön";
-        author = v.uploaderName || "";
-        dur = formatDuration(v.duration);
-      }
+      var title = (v.title || "Nimetön").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      var author = (v.author || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      var dur = v.duration || "";
 
-      if (!videoId) continue;
-
-      title = title.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-      author = author.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-      html += '<div class="video-item" onclick="playVideo(\'' + videoId + '\')">';
-      if (thumbUrl) {
-        html += '<img class="thumb" src="' + thumbUrl + '" alt="">';
+      html += '<div class="video-item" onclick="playVideo(\'' + v.videoId + '\')">';
+      if (v.thumb) {
+        html += '<img class="thumb" src="' + v.thumb + '" alt="">';
       }
       html += '<div class="info">';
       html += '<div class="v-title">' + title + '</div>';
-      html += '<div class="v-meta">' + author + ' &bull; ' + dur + '</div>';
+      html += '<div class="v-meta">' + author + (dur ? ' &bull; ' + dur : '') + '</div>';
       html += '</div></div>';
     }
 
@@ -301,50 +227,21 @@
     statusEl.innerHTML = "Haetaan videovirtaa...";
     window.scrollTo(0, 0);
 
-    var srv = getSelectedServer();
-    var targetUrl = "";
-
-    if (srv.type === "INVIDIOUS") {
-      targetUrl = srv.baseUrl + "/api/v1/videos/" + encodeURIComponent(videoId);
-    } else {
-      targetUrl = srv.baseUrl + "/streams/" + encodeURIComponent(videoId);
-    }
-
-    var proxyUrl = WORKER_PROXY + encodeURIComponent(targetUrl);
+    var url = WORKER_BASE + "?action=stream&id=" + encodeURIComponent(videoId);
     var xhr = new XMLHttpRequest();
-    xhr.open("GET", proxyUrl, true);
-    xhr.timeout = 20000;
+    xhr.open("GET", url, true);
+    xhr.timeout = 25000;
 
     xhr.onreadystatechange = function() {
       if (xhr.readyState === 4) {
         if (xhr.status === 200) {
           try {
             var data = JSON.parse(xhr.responseText);
-            var mp4Url = null;
-
-            if (srv.type === "INVIDIOUS") {
-              var streams = data.formatStreams || [];
-              for (var i = 0; i < streams.length; i++) {
-                if (streams[i].container === "mp4" && streams[i].url) {
-                  mp4Url = streams[i].url;
-                  if (streams[i].qualityLabel && streams[i].qualityLabel.indexOf("360p") === 0) break;
-                }
-              }
-            } else {
-              var vStreams = data.videoStreams || [];
-              for (var j = 0; j < vStreams.length; j++) {
-                if (vStreams[j].format === "MPEG_4" && vStreams[j].videoOnly === false && vStreams[j].url) {
-                  mp4Url = vStreams[j].url;
-                  if (vStreams[j].quality === "360p") break;
-                }
-              }
-            }
-
-            if (mp4Url) {
+            if (data.url) {
               statusEl.style.display = "none";
-              window.location.href = mp4Url;
+              window.location.href = data.url;
             } else {
-              statusEl.innerHTML = "Suoraa MP4-virtaa ei löytynyt. Vaihda palvelinta yläkulmasta.";
+              statusEl.innerHTML = data.error || "Videovirtaa ei löytynyt.";
             }
           } catch (e) {
             statusEl.innerHTML = "Virhe videon tietojen purkamisessa.";
@@ -356,7 +253,7 @@
     };
 
     xhr.onerror = function() {
-      statusEl.innerHTML = "Yhteys Workeriin epäonnistui videota avatessa.";
+      statusEl.innerHTML = "Yhteysvirhe videovirtaa haettaessa.";
     };
 
     xhr.send();
